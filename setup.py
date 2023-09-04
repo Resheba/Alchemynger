@@ -9,7 +9,7 @@ setup(
   version='0.0.4',
   author='Resheba',
   author_email='c90de11@gmail.com',
-  description='Simple SQLAlchemy connector manager',
+  description='Simple SQLAlchemy Connection Manager',
   long_description=readme(),
   long_description_content_type='text/markdown',
   url='https://github.com/Resheba/Alchemynger',
