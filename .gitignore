@@ -3,8 +3,3 @@ __pycache__/
 dist/
 .env
 venv
-LICENSE.txt
-codecov.yaml
-pyproject.toml
-setup.cfg
-setup.py
