@@ -1,0 +1,7 @@
+codecov:
+  branch: main
+
+comment:
+  behavior: default
+  branches:
+    - main
