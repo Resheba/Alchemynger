@@ -116,6 +116,18 @@ class SyncManager(Manager):
                 yield session
             finally:
                 session.close()
+ 
+    @property
+    def session(self):
+        """
+        Property that provides a SQLAlchemy session for database operations.
+
+        Usage::
+
+            result = manager.session.query(User).all()
+        """
+        with self.get_session() as session:
+            return session
         
     def execute(
                  self, 
