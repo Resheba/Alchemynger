@@ -118,7 +118,7 @@ class SyncManager(Manager):
                 session.close()
  
     @property
-    def session(self):
+    def session(self) -> Session:
         """
         Property that provides a SQLAlchemy session for database operations.
 
@@ -216,7 +216,21 @@ class AsyncManager(Manager):
                 yield session
             finally:
                 await session.close()
+
+    @property
+    async def session(self) -> AsyncSession:
+        """
+        Property that provides a SQLAlchemy session for database operations.
+
+        Usage::
         
+            session = await manager.session
+            session.add(User(name='name'))
+            await session.commit()
+        """
+        async with self.get_session() as session:
+            return session
+
     async def execute(
                      self, 
                      statement: Select | Delete | Update | Insert | TextClause, 
