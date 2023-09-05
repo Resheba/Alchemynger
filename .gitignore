@@ -3,3 +3,5 @@ __pycache__/
 dist/
 .env
 venv
+test.py
+temp.db

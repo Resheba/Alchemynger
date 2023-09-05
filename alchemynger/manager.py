@@ -10,10 +10,11 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 
 
 class Manager(ABC):
-    def __init__(self,
+    def __init__(
+                 self,
                  path: str,
                  auto_connect: bool = False
-                 ) -> None:
+                ) -> None:
         self._path: str = path
         
         if auto_connect:
@@ -89,12 +90,14 @@ class SyncManager(Manager):
      execute statement and commit if `commit=True`
     """
     
-    def connect(self
+    def connect(
+                 self
                 ) -> None:
         self._engine_init()
 
-    def _engine_init(self
-                     ) -> None:
+    def _engine_init(
+                     self
+                    ) -> None:
         try:
             self.engine: Engine = create_engine(self._path)
         except ArgumentError:
@@ -103,7 +106,8 @@ class SyncManager(Manager):
         self.session_maker: sessionmaker = sessionmaker(bind=self.engine)
     
     @contextmanager
-    def get_session(self
+    def get_session(
+                     self
                     ) -> Generator[Session, None, None]:
         if self.session_maker is None:
             raise Exception(f'The manager is not connected to the database {self._path}')
@@ -113,14 +117,16 @@ class SyncManager(Manager):
             finally:
                 session.close()
         
-    def execute(self, 
-                statement: Select | Delete | Update | Insert | TextClause, 
-                commit: bool = False
+    def execute(
+                 self, 
+                 statement: Select | Delete | Update | Insert | TextClause, 
+                 commit: bool = False,
+                 scalars: bool = True
                 ) -> Sequence[Row[Any]] | None :
         with self.get_session() as session:
             result = session.execute(statement=statement)
             try:
-                result = result.all()
+                result = result.scalars().all() if scalars else result.all()
             except ResourceClosedError:
                 result = None
 
@@ -163,18 +169,21 @@ class AsyncManager(Manager):
      execute statement and commit if `commit=True`
     """
 
-    def __init__(self, 
+    def __init__(
+                 self, 
                  path: str
-                 ) -> None:
+                ) -> None:
         self._path: str = path
         self.session_maker = None
 
-    async def connect(self
-                      ) -> None:
+    async def connect(
+                     self
+                    ) -> None:
         await self._engine_init()
         
-    async def _engine_init(self
-                           ) -> None:
+    async def _engine_init(
+                         self
+                        ) -> None:
         try:
             self.engine: Engine = create_async_engine(self._path)
         except ArgumentError:
@@ -185,8 +194,9 @@ class AsyncManager(Manager):
         self.session_maker: async_sessionmaker = async_sessionmaker(bind=self.engine)
 
     @asynccontextmanager
-    async def get_session(self
-                          ) -> AsyncGenerator[AsyncSession, None]:
+    async def get_session(
+                         self
+                        ) -> AsyncGenerator[AsyncSession, None]:
         if self.session_maker is None:
             raise Exception(f'The manager is not connected to the database {self._path}')
         async with self.session_maker() as session:
@@ -195,15 +205,17 @@ class AsyncManager(Manager):
             finally:
                 await session.close()
         
-    async def execute(self, 
-                      statement: Select | Delete | Update | Insert | TextClause, 
-                      *, 
-                      commit: bool = False
-                      ) -> Sequence[Row[Any]] | None :
+    async def execute(
+                     self, 
+                     statement: Select | Delete | Update | Insert | TextClause, 
+                     *, 
+                     commit: bool = False,
+                     scalars: bool = True
+                    ) -> Sequence[Row[Any]] | None :
         async with self.get_session() as session:
             result = await session.execute(statement=statement)
             try:
-                result = result.all()
+                result = result.scalars().all() if scalars else result.all()
             except ResourceClosedError:
                 result = None
 
