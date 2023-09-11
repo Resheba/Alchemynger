@@ -7,7 +7,7 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
-from selector import Selector
+from .selector import Selector
 
 
 class Manager:
