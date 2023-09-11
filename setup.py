@@ -6,7 +6,7 @@ def readme():
 
 setup(
   name='alchemynger',
-  version='0.0.4',
+  version='0.1.1',
   author='Resheba',
   author_email='c90de11@gmail.com',
   description='Simple SQLAlchemy Connection Manager',

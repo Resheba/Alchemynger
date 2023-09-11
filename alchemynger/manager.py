@@ -1,15 +1,16 @@
-from abc import ABC
 from contextlib import contextmanager, asynccontextmanager
-from typing import Any, AsyncGenerator, Generator, Sequence
+from typing import Any, AsyncGenerator, Generator, Iterable, Sequence
 
 from sqlalchemy.exc import ArgumentError, ResourceClosedError
-from sqlalchemy import Row, Select, Delete, Update, Insert, TextClause, Engine, create_engine
+from sqlalchemy import Column, Row, Select, Delete, Update, Insert, TextClause, Engine, create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
+from selector import Selector
 
-class Manager(ABC):
+
+class Manager:
     def __init__(
                  self,
                  path: str,
@@ -20,6 +21,13 @@ class Manager(ABC):
         if auto_connect:
             self.connect()
     
+    def __getitem__(
+            self, 
+            entities: Sequence[DeclarativeBase | Column]):
+        if issubclass(type(entities), Iterable):
+            return Selector(*entities)
+        return Selector(entities)
+
     def connect():
         """
         Connecting with DataBase, create SQLAlchemy `engine`
@@ -223,7 +231,7 @@ class AsyncManager(Manager):
         Property that provides a SQLAlchemy session for database operations.
 
         Usage::
-        
+
             session = await manager.session
             session.add(User(name='name'))
             await session.commit()

@@ -18,7 +18,6 @@ pip install alchemynger
 SyncManager is designed for traditional synchronous applications. Here's how to use it:
 
 ```python
-from sqlalchemy import insert
 from alchemynger import SyncManager
 
 # Create a SyncManager instance
@@ -33,7 +32,8 @@ class User(manager.Base):
 manager.connect()
 
 # Create an insert statement and execute it
-stmt = insert(User).values(name='username')
+stmt = manager[User].insert.values(name='username')
+
 manager.execute(stmt, commit=True)
 ```
 
@@ -42,7 +42,6 @@ manager.execute(stmt, commit=True)
 AsyncManager is tailored for asyncio-based applications. Here's how to use it:
 
 ```python
-from sqlalchemy import insert
 from asyncio import run
 from alchemynger import AsyncManager
 
@@ -57,11 +56,42 @@ class User(manager.Base):
 # Define an async main function
 async def main():
     await manager.connect()
-    stmt = insert(User).values(name='username')
+    
+    stmt = manager[User].insert.values(name='username')
+
     await manager.execute(stmt, commit=True)
 
 if __name__ == "__main__":
     run(main())
+```
+
+## Native use of SQLAlchemy queries
+You can also utilize the standard query-writing methods provided by SQLAlchemy, for example, if you find that the library's functionality is insufficient for your needs. Just user `from sqlalchemy import select, insert, ...` or import from `from alchemynger import select, insert`
+
+```python
+from alchemynger import SyncManager, select, insert
+
+# Create a SyncManager instance
+manager = SyncManager('sqlite:///path/to/db')
+
+# Define your SQLAlchemy model class
+class User(manager.Base):
+    __tablename__ = 'user'
+    name = Column(String(30), primary_key=True)
+
+# Connect to the database
+manager.connect()
+
+# Create a select statement and execute it
+
+stmt = select(User).where(User.id > 5)
+
+manager.execute(stmt)
+
+# Create an insert statement and execute it
+stmt = insert(User).values(name="Lex")
+
+manager.execute(stmt, commit=True)
 ```
 
 ### Context Managers and Error Handling
@@ -71,7 +101,8 @@ Both SyncManager and AsyncManager provide context managers for managing database
 ```python
 # Example using a context manager
 with manager.get_session() as session:
-    stmt = select(User)
+    stmt = manager[User].select
+
     result = manager.execute(stmt)
     # Use the result
 
@@ -84,4 +115,4 @@ Contributions to Alchemynger are welcome! If you have ideas for improvements, bu
 
 ## License
 
-Alchemynger is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+Alchemynger is licensed under the MIT License. See the [LICENSE](https://github.com/Resheba/Alchemynger/blob/main/LICENSE) file for more details.
