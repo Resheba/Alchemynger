@@ -46,7 +46,7 @@ from asyncio import run
 from alchemynger import AsyncManager
 
 # Create an AsyncManager instance
-manager = AsyncManager('sqlite:///path/to/db')
+manager = AsyncManager('sqlite+aiosqlite:///path/to/db')
 
 # Define your SQLAlchemy model class
 class User(manager.Base):
