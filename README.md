@@ -65,6 +65,24 @@ if __name__ == "__main__":
     run(main())
 ```
 
+### Selector: Useage
+
+Selectors can be used with Columns, a Column, or the Table Model.
+
+```python
+# Create a select statements with column or columns
+manager[User.name].select
+manager[User.name, User.any_col].select
+```
+
+```python
+# Create statements with model
+manager[User].select
+manager[User].delete
+manager[User].insert
+manager[User].update
+```
+
 ## Native use of SQLAlchemy queries
 You can also utilize the standard query-writing methods provided by SQLAlchemy, for example, if you find that the library's functionality is insufficient for your needs. Just user `from sqlalchemy import select, insert, ...` or import from `from alchemynger import select, insert`
 
@@ -103,10 +121,8 @@ Both SyncManager and AsyncManager provide context managers for managing database
 with manager.get_session() as session:
     stmt = manager[User].select
 
-    result = manager.execute(stmt)
+    result = session.execute(stmt)
     # Use the result
-
-# The session is automatically closed when exiting the 'with' block
 ```
 
 ## Contribution
