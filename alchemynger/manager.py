@@ -153,6 +153,18 @@ class SyncManager(Manager):
             session.commit() if commit else None
             
             return result
+    
+    def __call__(self, 
+                     statement: Select | Delete | Update | Insert | TextClause, 
+                     *, 
+                     commit: bool = False,
+                     scalars: bool = True
+                    ) -> Sequence[Row[Any]] | None:
+        return self.execute(
+            statement=statement,
+            commit=commit,
+            scalars=scalars
+        )     
 
 
 class AsyncManager(Manager):
@@ -245,7 +257,7 @@ class AsyncManager(Manager):
                      *, 
                      commit: bool = False,
                      scalars: bool = True
-                    ) -> Sequence[Row[Any]] | None :
+                    ) -> Sequence[Row[Any]] | None:
         async with self.get_session() as session:
             result = await session.execute(statement=statement)
             try:
@@ -256,4 +268,16 @@ class AsyncManager(Manager):
             await session.commit() if commit else None
 
             return result
+    
+    async def __call__(self, 
+                     statement: Select | Delete | Update | Insert | TextClause, 
+                     *, 
+                     commit: bool = False,
+                     scalars: bool = True
+                    ) -> Sequence[Row[Any]] | None:
+        return await self.execute(
+            statement=statement,
+            commit=commit,
+            scalars=scalars
+        )
         

@@ -35,7 +35,7 @@ manager.connect()
 # Create an insert statement and execute it
 stmt = manager[User].insert.values(name='username')
 
-manager.execute(stmt, commit=True)
+manager.execute(stmt, commit=True) # or await manager(stmt, commit=True)
 ```
 
 ### AsyncManager: Asynchronous Database Operations
@@ -61,7 +61,7 @@ async def main():
     
     stmt = manager[User].insert.values(name='username')
 
-    await manager.execute(stmt, commit=True)
+    await manager.execute(stmt, commit=True) # or await manager(stmt, commit=True)
 
 if __name__ == "__main__":
     run(main())
@@ -112,7 +112,7 @@ manager.execute(stmt)
 # Create an insert statement and execute it
 stmt = insert(User).values(name="Lex")
 
-manager.execute(stmt, commit=True)
+manager.execute(stmt, commit=True) # or await manager(stmt, commit=True)
 ```
 
 ### Context Managers and Error Handling
