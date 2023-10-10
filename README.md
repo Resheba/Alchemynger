@@ -19,6 +19,7 @@ SyncManager is designed for traditional synchronous applications. Here's how to 
 
 ```python
 from alchemynger import SyncManager
+from alchemynger.sqlalchemy import Column, String
 
 # Create a SyncManager instance
 manager = SyncManager('sqlite:///path/to/db')
@@ -44,6 +45,7 @@ AsyncManager is tailored for asyncio-based applications. Here's how to use it:
 ```python
 from asyncio import run
 from alchemynger import AsyncManager
+from alchemynger.sqlalchemy import Column, String
 
 # Create an AsyncManager instance
 manager = AsyncManager('sqlite+aiosqlite:///path/to/db')
@@ -87,7 +89,8 @@ manager[User].update
 You can also utilize the standard query-writing methods provided by SQLAlchemy, for example, if you find that the library's functionality is insufficient for your needs. Just user `from sqlalchemy import select, insert, ...` or import from `from alchemynger import select, insert`
 
 ```python
-from alchemynger import SyncManager, select, insert
+from alchemynger import SyncManager
+from alchemynger.sqlalchemy import select, insert, Column
 
 # Create a SyncManager instance
 manager = SyncManager('sqlite:///path/to/db')
