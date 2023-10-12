@@ -1,4 +1,17 @@
-# Alchemynger: SQLAlchemy Connection Manager
+<h1 align="center"> Alchemynger </h1> 
+<h3 align="center"> SQLAlchemy Connection Manager </h3>
+
+<p align="center">
+    <img alt="Python" src="https://img.shields.io/badge/python-3.8_|_3.9_|_3.10_|_3.11-blue" />
+</p>
+<p align="center">
+    <img alt="Python" src="https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54" />
+    <img alt="Python" src="https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white" />
+    <img alt="Python" src="https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white" />
+    <img alt="Python" src="https://img.shields.io/badge/mysql-%2300f.svg?style=for-the-badge&logo=mysql&logoColor=white" />
+    <img alt="Python" src="https://img.shields.io/badge/flask-%23000.svg?style=for-the-badge&logo=flask&logoColor=white" />
+</p>
+
 
 Alchemynger is a versatile Python library that simplifies database connectivity and interaction using SQLAlchemy. It offers both synchronous and asynchronous database management for applications that require efficient database operations. 
 
@@ -35,7 +48,7 @@ manager.connect()
 # Create an insert statement and execute it
 stmt = manager[User].insert.values(name='username')
 
-manager.execute(stmt, commit=True) # or await manager(stmt, commit=True)
+manager.execute(stmt, commit=True) # or manager(stmt, commit=True)
 ```
 
 ### AsyncManager: Asynchronous Database Operations
@@ -83,6 +96,11 @@ manager[User].select
 manager[User].delete
 manager[User].insert
 manager[User].update
+```
+then execute
+```python
+# execute statement
+manager.execute(stmt, scalars=False)
 ```
 
 ## Native use of SQLAlchemy queries
