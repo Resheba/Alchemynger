@@ -106,7 +106,7 @@ manager.execute(stmt, scalars=False)
 ```
 
 ## Native use of SQLAlchemy queries
-You can also utilize the standard query-writing methods provided by SQLAlchemy, for example, if you find that the library's functionality is insufficient for your needs. Just user `from sqlalchemy import select, insert, ...` or import from `from alchemynger import select, insert`
+You can also utilize the standard query-writing methods provided by SQLAlchemy, for example, if you find that the library's functionality is insufficient for your needs. Just user `from sqlalchemy import select, insert, ...` or import from `from alchemynger.sqlalchemy import select, insert`
 
 ```python
 from alchemynger import SyncManager

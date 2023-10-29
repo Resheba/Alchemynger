@@ -6,6 +6,8 @@ from sqlalchemy import Column, Row, Select, Delete, Update, Insert, TextClause, 
 from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm.decl_api import DeclarativeMeta
 
 from .selector import Selector
 
@@ -17,6 +19,7 @@ class Manager:
                  auto_connect: bool = False
                 ) -> None:
         self._path: str = path
+        self.Base: DeclarativeMeta = declarative_base()
         
         if auto_connect:
             self.connect()
@@ -66,7 +69,7 @@ class Manager:
         """
         ...
 
-    class Base(DeclarativeBase): pass
+    # class Base(DeclarativeBase): pass
 
 
 class SyncManager(Manager):
@@ -207,6 +210,8 @@ class AsyncManager(Manager):
                 ) -> None:
         self._path: str = path
         self.session_maker = None
+
+        self.Base: DeclarativeMeta = declarative_base()
 
     async def connect(
                      self
