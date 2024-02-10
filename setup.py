@@ -6,7 +6,7 @@ def readme():
 
 setup(
   name='alchemynger',
-  version='0.1.5',
+  version='0.1.5.1',
   author='Resheba',
   author_email='c90de11@gmail.com',
   description='Simple SQLAlchemy Connection Manager',
@@ -14,7 +14,7 @@ setup(
   long_description_content_type='text/markdown',
   url='https://github.com/Resheba/Alchemynger',
   packages=find_packages(),
-  install_requires=['greenlet==2.0.2', 'SQLAlchemy==2.0.20', 'typing_extensions==4.7.1'],
+  install_requires=['SQLAlchemy'],
   classifiers=[
     'Programming Language :: Python :: 3',
     'License :: OSI Approved :: MIT License',

@@ -132,7 +132,7 @@ manager.execute(stmt)
 # Create an insert statement and execute it
 stmt = insert(User).values(name="Lex")
 
-manager.execute(stmt, commit=True) # or await manager(stmt, commit=True)
+manager.execute(stmt, commit=True) # or manager(stmt, commit=True)
 ```
 
 ### Context Managers and Error Handling

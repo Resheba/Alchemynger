@@ -1,12 +1,30 @@
-from contextlib import contextmanager, asynccontextmanager
-from typing import Any, AsyncGenerator, Generator, Iterable, Sequence
+from contextlib import contextmanager
+from contextlib import asynccontextmanager
+from typing import Any
+from typing import AsyncGenerator
+from typing import Generator
+from typing import Iterable
+from typing import Sequence
 
-from sqlalchemy.exc import ArgumentError, ResourceClosedError
-from sqlalchemy import Column, Row, Select, Delete, Update, Insert, TextClause, Engine, create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
-
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.exc import ArgumentError
+from sqlalchemy.exc import ResourceClosedError
+from sqlalchemy import Column
+from sqlalchemy import Row
+from sqlalchemy import Select
+from sqlalchemy import Delete
+from sqlalchemy import Update
+from sqlalchemy import Insert
+from sqlalchemy import TextClause
+from sqlalchemy import Engine
+from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
+
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 
 from .selector import Selector
@@ -15,14 +33,10 @@ from .selector import Selector
 class Manager:
     def __init__(
                  self,
-                 path: str,
-                 auto_connect: bool = False
+                 path: str
                 ) -> None:
         self._path: str = path
         self.Base: DeclarativeMeta = declarative_base()
-        
-        if auto_connect:
-            self.connect()
     
     def __getitem__(
             self, 
@@ -102,18 +116,22 @@ class SyncManager(Manager):
     """
     
     def connect(
-                 self
+                 self,
+                 *,
+                 create_all: bool = True
                 ) -> None:
-        self._engine_init()
+        self._engine_init(create_all=create_all)
 
     def _engine_init(
-                     self
+                     self,
+                     create_all: bool
                     ) -> None:
         try:
             self.engine: Engine = create_engine(self._path)
         except ArgumentError:
             raise ArgumentError(f'Could not parse SQLAlchemy URL from string {self._path}')
-        self.Base.metadata.create_all(bind=self.engine)
+        if create_all:
+            self.Base.metadata.create_all(bind=self.engine)
         self.session_maker: sessionmaker = sessionmaker(bind=self.engine)
     
     @contextmanager
@@ -179,7 +197,7 @@ class AsyncManager(Manager):
         from asyncio import run
         from alchemynger import AsyncManager
         
-        manager = AsyncManager('sqlite:///path/to/db')
+        manager = AsyncManager('sqlite+aiosqlite:///path/to/db')
 
         class User(manager.Base):
             __tablename__ = 'user'
@@ -214,20 +232,23 @@ class AsyncManager(Manager):
         self.Base: DeclarativeMeta = declarative_base()
 
     async def connect(
-                     self
+                     self,
+                     *,
+                     create_all: bool = True
                     ) -> None:
-        await self._engine_init()
+        await self._engine_init(create_all=create_all)
         
     async def _engine_init(
-                         self
+                         self,
+                         create_all: bool
                         ) -> None:
         try:
             self.engine: Engine = create_async_engine(self._path)
         except ArgumentError:
             raise ArgumentError(f'Could not parse SQLAlchemy URL from string {self._path}')
-        
-        async with self.engine.begin() as connect:
-            await connect.run_sync(self.Base.metadata.create_all)
+        if create_all:
+            async with self.engine.begin() as connect:
+                await connect.run_sync(self.Base.metadata.create_all)
         self.session_maker: async_sessionmaker = async_sessionmaker(bind=self.engine)
 
     @asynccontextmanager
