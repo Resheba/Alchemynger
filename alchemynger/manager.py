@@ -234,13 +234,17 @@ class AsyncManager(Manager):
     async def connect(
                      self,
                      *,
-                     create_all: bool = True
+                     create_all: bool = True,
+                     expire_on_commit: bool = ...,
+                     autoflush: bool = ...
                     ) -> None:
-        await self._engine_init(create_all=create_all)
+        await self._engine_init(create_all=create_all, expire_on_commit=expire_on_commit, autoflush=autoflush)
         
     async def _engine_init(
                          self,
-                         create_all: bool
+                         create_all: bool,
+                         expire_on_commit: bool,
+                         autoflush: bool
                         ) -> None:
         try:
             self.engine: Engine = create_async_engine(self._path)
@@ -249,7 +253,7 @@ class AsyncManager(Manager):
         if create_all:
             async with self.engine.begin() as connect:
                 await connect.run_sync(self.Base.metadata.create_all)
-        self.session_maker: async_sessionmaker = async_sessionmaker(bind=self.engine)
+        self.session_maker: async_sessionmaker = async_sessionmaker(bind=self.engine, expire_on_commit=expire_on_commit, autoflush=autoflush)
 
     @asynccontextmanager
     async def get_session(
