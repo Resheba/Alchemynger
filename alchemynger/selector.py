@@ -1,28 +1,30 @@
-from sqlalchemy import Sequence, select, delete, update, insert
+from __future__ import annotations
+
+from typing import Any, TYPE_CHECKING
+
+from sqlalchemy import select, delete, update, insert
 from sqlalchemy import Select, Delete, Update, Insert, Column
-from sqlalchemy.orm import DeclarativeBase
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import DeclarativeBase
 
 
 class Selector:
     """
     Technical class for quick generation of sql queries
     """
-    def __init__(
-            self,
-            *entities: Sequence[DeclarativeBase | Column]
-            ) -> None:
-        self._entities: Sequence[DeclarativeBase | Column] = entities
-    
+
+    def __init__(self, *entities: type[DeclarativeBase] | Column[Any]) -> None:
+        self._entities: tuple[type[DeclarativeBase] | Column[Any], ...] = entities
+
     @property
-    def select(
-        self
-        ) -> Select:
+    def select(self) -> Select[Any]:
         """
         Usage::
 
             stmt = manager[User].select.where(User.id > 5)
             result = manager.execute(stmt)
-        
+
         Or Columns::
 
             stmt = manager[User.id, User.name].select
@@ -33,11 +35,9 @@ class Selector:
             result = await manager.execute(stmt)
         """
         return select(*self._entities)
-    
+
     @property
-    def delete(
-            self
-               ) -> Delete:
+    def delete(self) -> Delete:
         """
         Usage::
 
@@ -49,11 +49,9 @@ class Selector:
             result = await manager.execute(stmt, commit=True)
         """
         return delete(*self._entities)
-    
+
     @property
-    def update(
-            self
-            ) -> Update:
+    def update(self) -> Update:
         """
         Usage::
 
@@ -65,11 +63,9 @@ class Selector:
             result = await manager.execute(stmt, commit=True)
         """
         return update(*self._entities)
-    
+
     @property
-    def insert(
-            self
-               ) -> Insert:
+    def insert(self) -> Insert:
         """
         Usage::
 
@@ -81,4 +77,3 @@ class Selector:
             result = await manager.execute(stmt, commit=True)
         """
         return insert(*self._entities)
-    
