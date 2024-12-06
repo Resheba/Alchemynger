@@ -5,6 +5,7 @@ from abc import ABC
 from contextlib import contextmanager
 from contextlib import asynccontextmanager
 from typing import Any
+from typing import TYPE_CHECKING
 from collections.abc import AsyncGenerator
 from collections.abc import Generator
 from collections.abc import Sequence
@@ -12,6 +13,7 @@ from collections.abc import Sequence
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.exc import ResourceClosedError
 from sqlalchemy import Column
+from sqlalchemy import Table
 from sqlalchemy import Row
 from sqlalchemy import Select
 from sqlalchemy import Delete
@@ -33,6 +35,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from .selector import Selector
 from .exception import BadPathError
 
+if TYPE_CHECKING:
+    from sqlalchemy.engine import URL
+
 
 class Manager(ABC):
     Base: DeclarativeBase
@@ -44,12 +49,6 @@ class Manager(ABC):
         if isinstance(entities, Sequence):
             return Selector(*entities)
         return Selector(entities)
-
-    @abstractmethod
-    def connect(self, *args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
-        """
-        Connecting with DataBase, create SQLAlchemy `engine`
-        """
 
     @abstractmethod
     def _engine_init(self, *args: Any, **kwargs: Any) -> Any: ...  # noqa: ANN401
@@ -113,22 +112,52 @@ class SyncManager(Manager):
      execute statement and commit if `commit=True`
     """
 
-    def __init__(self, path: str) -> None:
-        self._path: str = path
+    def __init__(
+        self,
+        path: str | URL,
+        *,
+        autoflush: bool = True,
+        expire_on_commit: bool = True,
+        session_type: type = Session,
+        **kwargs: Any,
+    ) -> None:
+        self._path: URL | str = path
         self.Base: DeclarativeBase = declarative_base()
         self.session_maker: sessionmaker[Any] | None = None
+        self._engine_init(
+            session_type=session_type,
+            autoflush=autoflush,
+            expire_on_commit=expire_on_commit,
+            **kwargs,
+        )
 
-    def connect(self, *, create_all: bool = True) -> None:
-        self._engine_init(create_all=create_all)
-
-    def _engine_init(self, *, create_all: bool) -> None:
+    def _engine_init(
+        self,
+        *,
+        session_type: type,
+        autoflush: bool,
+        expire_on_commit: bool,
+        **kwargs: Any,
+    ) -> None:
         try:
             self.engine: Engine = create_engine(self._path)
         except ArgumentError as ex:
             raise BadPathError(f"Could not parse SQLAlchemy URL from string {self._path}") from ex
-        if create_all:
-            self.Base.metadata.create_all(bind=self.engine)
-        self.session_maker = sessionmaker(bind=self.engine)
+        self.session_maker = sessionmaker(
+            bind=self.engine,
+            class_=session_type,
+            autoflush=autoflush,
+            expire_on_commit=expire_on_commit,
+            **kwargs,
+        )
+
+    def create_all(
+        self,
+        tables: Sequence[Table] | None = None,
+        *,
+        checkfirst: bool = True,
+    ) -> None:
+        self.Base.metadata.create_all(bind=self.engine, tables=tables, checkfirst=checkfirst)
 
     @contextmanager
     def get_session(self) -> Generator[Session, None, None]:
@@ -204,44 +233,57 @@ class AsyncManager(Manager):
      execute statement and commit if `commit=True`
     """
 
-    def __init__(self, path: str) -> None:
-        self._path: str = path
-        self.session_maker: async_sessionmaker[Any] | None = None
-
-        self.Base: DeclarativeBase = declarative_base()
-
-    async def connect(
+    def __init__(
         self,
+        path: str | URL,
         *,
-        create_all: bool = True,
         autoflush: bool = True,
         expire_on_commit: bool = True,
+        session_type: type = AsyncSession,
+        **kwargs: Any,
     ) -> None:
-        await self._engine_init(
-            create_all=create_all,
-            expire_on_commit=expire_on_commit,
+        self._path: str | URL = path
+        self.session_maker: async_sessionmaker[Any] | None = None
+        self.Base: DeclarativeBase = declarative_base()
+        self._engine_init(
+            session_type=session_type,
             autoflush=autoflush,
+            expire_on_commit=expire_on_commit,
+            **kwargs,
         )
 
-    async def _engine_init(
+    def _engine_init(
         self,
         *,
-        create_all: bool,
-        autoflush: bool = True,
-        expire_on_commit: bool = True,
+        session_type: type,
+        autoflush: bool,
+        expire_on_commit: bool,
+        **kwargs: Any,
     ) -> None:
         try:
             self.engine: AsyncEngine = create_async_engine(self._path)
         except ArgumentError as ex:
             raise BadPathError(f"Could not parse SQLAlchemy URL from string {self._path}") from ex
-        if create_all:
-            async with self.engine.begin() as connect:
-                await connect.run_sync(self.Base.metadata.create_all)
         self.session_maker = async_sessionmaker(
             bind=self.engine,
+            class_=session_type,
             expire_on_commit=expire_on_commit,
             autoflush=autoflush,
+            **kwargs,
         )
+
+    async def create_all(
+        self,
+        tables: Sequence[Table] | None = None,
+        *,
+        checkfirst: bool = True,
+    ) -> None:
+        async with self.engine.begin() as connect:
+            await connect.run_sync(
+                self.Base.metadata.create_all,
+                tables=tables,
+                checkfirst=checkfirst,
+            )
 
     @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:

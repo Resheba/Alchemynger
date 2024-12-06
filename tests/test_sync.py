@@ -12,8 +12,7 @@ from sqlalchemy.orm import DeclarativeBase
 class TestSync:
     @staticmethod
     def test_connect() -> None:
-        manager: SyncManager = SyncManager(path="sqlite:///testS.db")
-        manager.connect()
+        _manager: SyncManager = SyncManager(path="sqlite:///testS.db")
 
     @staticmethod
     def test_session(s_manager: tuple[SyncManager, type[DeclarativeBase]]) -> None:

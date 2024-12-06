@@ -13,8 +13,7 @@ class TestAsync:
     @staticmethod
     @pytest.mark.asyncio()
     async def test_connect() -> None:
-        manager: AsyncManager = AsyncManager(path="sqlite+aiosqlite:///testA.db")
-        await manager.connect()
+        _manager: AsyncManager = AsyncManager(path="sqlite+aiosqlite:///testA.db")
 
     @staticmethod
     @pytest.mark.asyncio()

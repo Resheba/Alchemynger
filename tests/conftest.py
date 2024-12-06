@@ -49,7 +49,7 @@ def s_manager() -> tuple[SyncManager, type[DeclarativeBase]]:
         def __repr__(self) -> str:
             return f"User({self.id}, {self.name})"
 
-    manager.connect()
+    manager.create_all()
     return manager, User
 
 
@@ -66,5 +66,5 @@ async def a_manager() -> tuple[AsyncManager, type[DeclarativeBase]]:
         def __repr__(self) -> str:
             return f"User({self.id}, {self.name})"
 
-    await manager.connect()
+    await manager.create_all()
     return manager, User
