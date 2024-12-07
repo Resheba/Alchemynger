@@ -1,10 +1,11 @@
 [tool.poetry]
 name = "Alchemynger"
-version = "0.1.6"
+version = "0.2.0"
 authors = [
   "Resheba <c90de11@gmail.com>",
 ]
 description = "Simple SQLAlchemy connector manager."
+keywords = ["SQLAlchemy", "SQL", "Database"]
 readme = "README.md"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -16,7 +17,7 @@ packages = [{include = "alchemynger"}]
 Source = "https://github.com/Resheba/Alchemynger"
 
 [tool.poetry.dependencies]
-python = ">=3.8"
+python = ">=3.9"
 sqlalchemy = "^2.0.36"
 
 [tool.poetry.group.dev.dependencies]

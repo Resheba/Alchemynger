@@ -77,4 +77,4 @@ manager[User].update
 from .manager import SyncManager, AsyncManager
 
 __all__ = ("SyncManager", "AsyncManager")
-__version__ = "0.1.6"
+__version__ = "0.2.0"

@@ -5,6 +5,7 @@ from abc import ABC
 from contextlib import contextmanager
 from contextlib import asynccontextmanager
 from typing import Any
+from typing import overload
 from typing import TYPE_CHECKING
 from collections.abc import AsyncGenerator
 from collections.abc import Generator
@@ -21,6 +22,7 @@ from sqlalchemy import Update
 from sqlalchemy import Insert
 from sqlalchemy import TextClause
 from sqlalchemy import Engine
+from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
@@ -41,6 +43,78 @@ if TYPE_CHECKING:
 
 class Manager(ABC):
     Base: DeclarativeBase
+    _session_maker_type: type
+    _engine_fabric: Any
+    session_maker: Any = None
+    _session_type: type
+
+    @overload
+    def __init__(
+        self,
+        path: str | URL,
+        *,
+        metadata: MetaData | None = ...,
+        autoflush: bool = ...,
+        expire_on_commit: bool = ...,
+        session_type: type = ...,
+        **session_maker_kwargs: Any,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        path: str | URL,
+        *,
+        base: DeclarativeBase | None = ...,
+        autoflush: bool = ...,
+        expire_on_commit: bool = ...,
+        session_type: type = ...,
+        **session_maker_kwargs: Any,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        path: str | URL,
+        *,
+        metadata: MetaData | None = None,
+        base: DeclarativeBase | None = None,
+        autoflush: bool = True,
+        expire_on_commit: bool = True,
+        session_type: type | None = None,
+        **session_maker_kwargs: Any,
+    ) -> None:
+        self._path: URL | str = path
+        if base is not None:
+            self.Base = base
+        else:
+            self.Base: DeclarativeBase = declarative_base(metadata=metadata)
+        self._engine_init(
+            session_type=session_type,
+            autoflush=autoflush,
+            expire_on_commit=expire_on_commit,
+            **session_maker_kwargs,
+        )
+
+    def _engine_init(
+        self,
+        *,
+        session_type: type | None,
+        autoflush: bool,
+        expire_on_commit: bool,
+        **kwargs: Any,
+    ) -> None:
+        try:
+            self.engine = self.__class__._engine_fabric(self._path)  # noqa: SLF001
+        except ArgumentError as ex:
+            raise BadPathError(f"Could not parse SQLAlchemy URL from string {self._path}") from ex
+        if session_type is not None:
+            kwargs.setdefault("class_", session_type)
+        self.session_maker = self.__class__._session_maker_type(  # noqa: SLF001
+            bind=self.engine,
+            autoflush=autoflush,
+            expire_on_commit=expire_on_commit,
+            **kwargs,
+        )
 
     def __getitem__(
         self,
@@ -49,9 +123,6 @@ class Manager(ABC):
         if isinstance(entities, Sequence):
             return Selector(*entities)
         return Selector(entities)
-
-    @abstractmethod
-    def _engine_init(self, *args: Any, **kwargs: Any) -> Any: ...  # noqa: ANN401
 
     @abstractmethod
     def get_session(self, *args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
@@ -112,44 +183,11 @@ class SyncManager(Manager):
      execute statement and commit if `commit=True`
     """
 
-    def __init__(
-        self,
-        path: str | URL,
-        *,
-        autoflush: bool = True,
-        expire_on_commit: bool = True,
-        session_type: type = Session,
-        **kwargs: Any,
-    ) -> None:
-        self._path: URL | str = path
-        self.Base: DeclarativeBase = declarative_base()
-        self.session_maker: sessionmaker[Any] | None = None
-        self._engine_init(
-            session_type=session_type,
-            autoflush=autoflush,
-            expire_on_commit=expire_on_commit,
-            **kwargs,
-        )
-
-    def _engine_init(
-        self,
-        *,
-        session_type: type,
-        autoflush: bool,
-        expire_on_commit: bool,
-        **kwargs: Any,
-    ) -> None:
-        try:
-            self.engine: Engine = create_engine(self._path)
-        except ArgumentError as ex:
-            raise BadPathError(f"Could not parse SQLAlchemy URL from string {self._path}") from ex
-        self.session_maker = sessionmaker(
-            bind=self.engine,
-            class_=session_type,
-            autoflush=autoflush,
-            expire_on_commit=expire_on_commit,
-            **kwargs,
-        )
+    engine: Engine
+    _session_maker_type: type[sessionmaker[Any]] = sessionmaker
+    _engine_fabric = create_engine
+    _session_type: type[Session] = Session
+    session_maker: sessionmaker[Any] | None
 
     def create_all(
         self,
@@ -233,44 +271,11 @@ class AsyncManager(Manager):
      execute statement and commit if `commit=True`
     """
 
-    def __init__(
-        self,
-        path: str | URL,
-        *,
-        autoflush: bool = True,
-        expire_on_commit: bool = True,
-        session_type: type = AsyncSession,
-        **kwargs: Any,
-    ) -> None:
-        self._path: str | URL = path
-        self.session_maker: async_sessionmaker[Any] | None = None
-        self.Base: DeclarativeBase = declarative_base()
-        self._engine_init(
-            session_type=session_type,
-            autoflush=autoflush,
-            expire_on_commit=expire_on_commit,
-            **kwargs,
-        )
-
-    def _engine_init(
-        self,
-        *,
-        session_type: type,
-        autoflush: bool,
-        expire_on_commit: bool,
-        **kwargs: Any,
-    ) -> None:
-        try:
-            self.engine: AsyncEngine = create_async_engine(self._path)
-        except ArgumentError as ex:
-            raise BadPathError(f"Could not parse SQLAlchemy URL from string {self._path}") from ex
-        self.session_maker = async_sessionmaker(
-            bind=self.engine,
-            class_=session_type,
-            expire_on_commit=expire_on_commit,
-            autoflush=autoflush,
-            **kwargs,
-        )
+    engine: AsyncEngine
+    _session_maker_type: type[async_sessionmaker[Any]] = async_sessionmaker
+    _engine_fabric = create_async_engine
+    _session_type: type[AsyncSession] = AsyncSession
+    session_maker: async_sessionmaker[Any] | None
 
     async def create_all(
         self,
