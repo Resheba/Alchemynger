@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Alchemynger"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
   "Resheba <c90de11@gmail.com>",
 ]
@@ -12,9 +12,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 packages = [{include = "alchemynger"}]
-
-[project.urls]
-Source = "https://github.com/Resheba/Alchemynger"
+repository = "https://github.com/Resheba/Alchemynger"
 
 [tool.poetry.dependencies]
 python = ">=3.9"
