@@ -8,6 +8,7 @@ from alchemynger.sqlalchemy import select, insert, update, delete
 from sqlalchemy.orm import DeclarativeBase
 
 
+@pytest.mark.syn()
 @pytest.mark.usefixtures("s_manager")
 class TestSelector:
     def test_select(self, s_manager: tuple[SyncManager, type[DeclarativeBase]]) -> None:

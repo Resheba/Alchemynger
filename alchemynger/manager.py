@@ -159,28 +159,21 @@ class SyncManager(Manager):
 
     E.g.::
 
-        from sqlalchemy import insert
-        from alchemynger import SyncManager
-
         manager = SyncManager('sqlite:///path/to/db')
 
+        # Define your SQLAlchemy model class
         class User(manager.Base):
             __tablename__ = 'user'
             name = Column(String(30), primary_key=True)
 
-        manager.connect()
-        stmt = insert(User).values(name='username')
-        manager.execute(stmt, commit=True)
+        # Create User table
+        manager.create_all()
 
+        # Create an insert statement and execute it
+        stmt = manager[User].insert.values(name='username')
 
-    :param path: :class:`str`
-     DSN path to DataBase
+        manager.execute(stmt, commit=True) # or manager(stmt, commit=True)
 
-    :contextmanager get_session:
-     `yield` session with auto `.close()` after `with` statement
-
-    :method execute
-     execute statement and commit if `commit=True`
     """
 
     engine: Engine
@@ -198,12 +191,12 @@ class SyncManager(Manager):
         self.Base.metadata.create_all(bind=self.engine, tables=tables, checkfirst=checkfirst)
 
     @contextmanager
-    def get_session(self) -> Generator[Session, None, None]:
+    def get_session(self, **kwargs: Any) -> Generator[Session, None, None]:
         if self.session_maker is None:
             raise RuntimeError(
                 f"The manager is is missing engine or/and session maker {self._path}",
             )
-        with self.session_maker() as session:
+        with self.session_maker(**kwargs) as session:
             try:
                 yield session
             finally:
@@ -215,26 +208,23 @@ class SyncManager(Manager):
         *,
         commit: bool = False,
         scalars: bool = True,
+        ignore_closed_res: bool = True,
     ) -> Sequence[Row[Any]] | None:
         with self.get_session() as session:
             result = session.execute(statement=statement)
             try:
                 scal_or_rows = result.scalars().all() if scalars else result.all()
             except ResourceClosedError:
+                if not ignore_closed_res:
+                    raise
                 scal_or_rows = None
 
-            session.commit() if commit else None
+            if commit:
+                session.commit()
 
             return scal_or_rows
 
-    def __call__(
-        self,
-        statement: Select[Any] | Delete | Update | Insert | TextClause,
-        *,
-        commit: bool = False,
-        scalars: bool = True,
-    ) -> Sequence[Row[Any]] | None:
-        return self.execute(statement=statement, commit=commit, scalars=scalars)
+    __call__ = execute
 
 
 class AsyncManager(Manager):
@@ -242,33 +232,20 @@ class AsyncManager(Manager):
 
     Simple `INSERT` example::
 
-        from sqlalchemy import insert
-        from asyncio import run
-        from alchemynger import AsyncManager
-
         manager = AsyncManager('sqlite+aiosqlite:///path/to/db')
 
+        # Define your SQLAlchemy model class
         class User(manager.Base):
             __tablename__ = 'user'
             name = Column(String(30), primary_key=True)
 
+        # Define an async main function
         async def main():
-            await manager.connect()
-            stmt = insert(User).values(name='username')
-            await manager.execute(stmt, commit=True)
+            await manager.create_all()
 
-        if __name__ == "__main__":
-            run(amain())
+            stmt = manager[User].insert.values(name='username')
 
-
-    :param path: :class:`str`
-     DSN path to DataBase
-
-    :contextmanager get_session:
-     `yield` session with auto `.close()` after `with` statement
-
-    :method execute
-     execute statement and commit if `commit=True`
+            await manager.execute(stmt, commit=True) # or await manager(stmt, commit=True)
     """
 
     engine: AsyncEngine
@@ -291,12 +268,12 @@ class AsyncManager(Manager):
             )
 
     @asynccontextmanager
-    async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
+    async def get_session(self, **kwargs: Any) -> AsyncGenerator[AsyncSession, None]:
         if self.session_maker is None:
             raise RuntimeError(
                 f"The manager is is missing engine or/and session maker {self._path}",
             )
-        async with self.session_maker() as session:
+        async with self.session_maker(**kwargs) as session:
             try:
                 yield session
             finally:
@@ -308,23 +285,19 @@ class AsyncManager(Manager):
         *,
         commit: bool = False,
         scalars: bool = True,
+        ignore_closed_res: bool = True,
     ) -> Sequence[Row[Any]] | None:
         async with self.get_session() as session:
             result = await session.execute(statement=statement)
             try:
                 scal_or_rows = result.scalars().all() if scalars else result.all()
             except ResourceClosedError:
+                if not ignore_closed_res:
+                    raise
                 scal_or_rows = None
-
-            await session.commit() if commit else None
+            if commit:
+                await session.commit()
 
             return scal_or_rows
 
-    async def __call__(
-        self,
-        statement: Select[Any] | Delete | Update | Insert | TextClause,
-        *,
-        commit: bool = False,
-        scalars: bool = True,
-    ) -> Sequence[Row[Any]] | None:
-        return await self.execute(statement=statement, commit=commit, scalars=scalars)
+    __call__ = execute

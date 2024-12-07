@@ -6,8 +6,10 @@ from alchemynger import SyncManager
 from alchemynger.sqlalchemy import select, insert, update, delete
 
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.exc import ResourceClosedError
 
 
+@pytest.mark.syn()
 @pytest.mark.usefixtures("setup_db", "s_manager")
 class TestSync:
     @staticmethod
@@ -58,3 +60,9 @@ class TestSync:
         assert len(manager.execute(select(User))) == 1
 
         manager.execute(delete(User), commit=True)
+
+    @staticmethod
+    def test_raise_close_res(s_manager: tuple[SyncManager, type[DeclarativeBase]]) -> None:
+        manager, User = s_manager  # noqa: N806
+        with pytest.raises(ResourceClosedError):
+            manager.execute(insert(User).values(name="Tempo"), ignore_closed_res=False)

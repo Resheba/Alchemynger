@@ -35,9 +35,6 @@ files = "alchemynger,tests"
 ignore_missing_imports = true
 disallow_subclassing_any = false
 
-[tool.pytest.ini_options]
-asyncio_default_fixture_loop_scope = "function"
-
 [tool.ruff]
 line-length = 100
 target-version = "py311"
@@ -95,6 +92,13 @@ ignore = [
 
 [tool.ruff.lint.flake8-annotations]
 allow-star-arg-any = true
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "asyn",
+    "syn",
+]
 
 [build-system]
 requires = ["poetry-core"]
