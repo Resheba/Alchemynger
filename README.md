@@ -2,7 +2,7 @@
 <h3 align="center"> SQLAlchemy Connection Manager </h3>
 
 <p align="center">
-    <img alt="Python" src="https://img.shields.io/badge/python-3.9_|_3.10_|_3.11-blue" />
+    <img alt="Python" src="https://img.shields.io/badge/python-3.9_|_3.10_|_3.11_|_3.12-blue" />
 </p>
 <p align="center">
     <img alt="Python" src="https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54" />
@@ -11,7 +11,6 @@
     <img alt="Flask" src="https://img.shields.io/badge/flask-%23000.svg?style=for-the-badge&logo=flask&logoColor=white" />
     <img alt="MySQL" src="https://img.shields.io/badge/mysql-%2300f.svg?style=for-the-badge&logo=mysql&logoColor=white" />
     <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" />
-    <img alt="Flask" src="https://img.shields.io/badge/flask-%23000.svg?style=for-the-badge&logo=flask&logoColor=white" />
 </p>
 
 
