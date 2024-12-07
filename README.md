@@ -91,12 +91,14 @@ manager[User.name].select
 manager[User.name, User.any_col].select
 ```
 
+Selectors are simply shortcuts.
+
 ```python
 # Create statements with model
-manager[User].select
-manager[User].delete
-manager[User].insert
-manager[User].update
+manager[User].select -> select(User)
+manager[User].delete -> delete(User)
+manager[User].insert -> insert(User)
+manager[User].update -> update(User)
 ```
 then execute
 ```python
