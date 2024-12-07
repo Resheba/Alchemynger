@@ -1,14 +1,20 @@
+from __future__ import annotations
+
+from abc import abstractmethod
+from abc import ABC
 from contextlib import contextmanager
 from contextlib import asynccontextmanager
 from typing import Any
-from typing import AsyncGenerator
-from typing import Generator
-from typing import Iterable
-from typing import Sequence
+from typing import overload
+from typing import TYPE_CHECKING
+from collections.abc import AsyncGenerator
+from collections.abc import Generator
+from collections.abc import Sequence
 
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.exc import ResourceClosedError
 from sqlalchemy import Column
+from sqlalchemy import Table
 from sqlalchemy import Row
 from sqlalchemy import Select
 from sqlalchemy import Delete
@@ -16,6 +22,8 @@ from sqlalchemy import Update
 from sqlalchemy import Insert
 from sqlalchemy import TextClause
 from sqlalchemy import Engine
+from sqlalchemy import MetaData
+from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import DeclarativeBase
@@ -25,42 +33,105 @@ from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy.orm.decl_api import DeclarativeMeta
 
 from .selector import Selector
+from .exception import BadPathError
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import URL
 
 
-class Manager:
+class Manager(ABC):
+    Base: DeclarativeBase
+    _session_maker_type: type
+    _engine_fabric: Any
+    session_maker: Any = None
+    _session_type: type
+
+    @overload
     def __init__(
-                 self,
-                 path: str
-                ) -> None:
-        self._path: str = path
-        self.Base: DeclarativeMeta = declarative_base()
-    
+        self,
+        path: str | URL,
+        *,
+        metadata: MetaData | None = ...,
+        autoflush: bool = ...,
+        expire_on_commit: bool = ...,
+        session_type: type = ...,
+        **session_maker_kwargs: Any,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        path: str | URL,
+        *,
+        base: DeclarativeBase | None = ...,
+        autoflush: bool = ...,
+        expire_on_commit: bool = ...,
+        session_type: type = ...,
+        **session_maker_kwargs: Any,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        path: str | URL,
+        *,
+        metadata: MetaData | None = None,
+        base: DeclarativeBase | None = None,
+        autoflush: bool = True,
+        expire_on_commit: bool = True,
+        session_type: type | None = None,
+        **session_maker_kwargs: Any,
+    ) -> None:
+        self._path: URL | str = path
+        if base is not None:
+            self.Base = base
+        else:
+            self.Base: DeclarativeBase = declarative_base(metadata=metadata)
+        self._engine_init(
+            session_type=session_type,
+            autoflush=autoflush,
+            expire_on_commit=expire_on_commit,
+            **session_maker_kwargs,
+        )
+
+    def _engine_init(
+        self,
+        *,
+        session_type: type | None,
+        autoflush: bool,
+        expire_on_commit: bool,
+        **kwargs: Any,
+    ) -> None:
+        try:
+            self.engine = self.__class__._engine_fabric(self._path)  # noqa: SLF001
+        except ArgumentError as ex:
+            raise BadPathError(f"Could not parse SQLAlchemy URL from string {self._path}") from ex
+        if session_type is not None:
+            kwargs.setdefault("class_", session_type)
+        self.session_maker = self.__class__._session_maker_type(  # noqa: SLF001
+            bind=self.engine,
+            autoflush=autoflush,
+            expire_on_commit=expire_on_commit,
+            **kwargs,
+        )
+
     def __getitem__(
-            self, 
-            entities: Sequence[DeclarativeBase | Column]):
-        if issubclass(type(entities), Iterable):
+        self,
+        entities: type[DeclarativeBase] | Column[Any] | tuple[Any, ...],
+    ) -> Selector:
+        if isinstance(entities, Sequence):
             return Selector(*entities)
         return Selector(entities)
 
-    def connect():
+    @abstractmethod
+    def get_session(self, *args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
         """
-        Connecting with DataBase, create SQLAlchemy `engine`
+        yield session with auto `.close()` after `with` statement
         """
-        ...
-    
-    def _engine_init():
-        ...
-    
-    def get_session():
-        """
-        `yield` session with auto `.close()` after `with` statement
-        """
-        ...
-    
-    def execute():
+
+    @abstractmethod
+    def execute(self, *args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
         """
         Accept SQLAlchemy statements
 
@@ -71,7 +142,7 @@ class Manager:
 
             stmt = select(User)
             result = manager.execute(stmt)
-        
+
         Async example::
 
             stmt = insert(User).values(**values)
@@ -81,9 +152,6 @@ class Manager:
             result = await manager.execute(stmt)
 
         """
-        ...
-
-    # class Base(DeclarativeBase): pass
 
 
 class SyncManager(Manager):
@@ -91,101 +159,72 @@ class SyncManager(Manager):
 
     E.g.::
 
-        from sqlalchemy import insert
-        from alchemynger import SyncManager
-        
         manager = SyncManager('sqlite:///path/to/db')
 
+        # Define your SQLAlchemy model class
         class User(manager.Base):
             __tablename__ = 'user'
             name = Column(String(30), primary_key=True)
 
-        manager.connect()
-        stmt = insert(User).values(name='username')
-        manager.execute(stmt, commit=True)
+        # Create User table
+        manager.create_all()
 
-        
-    :param path: :class:`str`
-     DSN path to DataBase
+        # Create an insert statement and execute it
+        stmt = manager[User].insert.values(name='username')
 
-    :contextmanager get_session:
-     `yield` session with auto `.close()` after `with` statement
-    
-    :method execute
-     execute statement and commit if `commit=True`
+        manager.execute(stmt, commit=True) # or manager(stmt, commit=True)
+
     """
-    
-    def connect(
-                 self,
-                 *,
-                 create_all: bool = True
-                ) -> None:
-        self._engine_init(create_all=create_all)
 
-    def _engine_init(
-                     self,
-                     create_all: bool
-                    ) -> None:
-        try:
-            self.engine: Engine = create_engine(self._path)
-        except ArgumentError:
-            raise ArgumentError(f'Could not parse SQLAlchemy URL from string {self._path}')
-        if create_all:
-            self.Base.metadata.create_all(bind=self.engine)
-        self.session_maker: sessionmaker = sessionmaker(bind=self.engine)
-    
+    engine: Engine
+    _session_maker_type: type[sessionmaker[Any]] = sessionmaker
+    _engine_fabric = create_engine
+    _session_type: type[Session] = Session
+    session_maker: sessionmaker[Any] | None
+
+    def create_all(
+        self,
+        tables: Sequence[Table] | None = None,
+        *,
+        checkfirst: bool = True,
+    ) -> None:
+        self.Base.metadata.create_all(bind=self.engine, tables=tables, checkfirst=checkfirst)
+
     @contextmanager
-    def get_session(
-                     self
-                    ) -> Generator[Session, None, None]:
+    def get_session(self, **kwargs: Any) -> Generator[Session, None, None]:
         if self.session_maker is None:
-            raise Exception(f'The manager is not connected to the database {self._path}')
-        with self.session_maker() as session:
+            raise RuntimeError(
+                f"The manager is is missing engine or/and session maker {self._path}",
+            )
+        with self.session_maker(**kwargs) as session:
             try:
                 yield session
             finally:
                 session.close()
- 
-    @property
-    def session(self) -> Session:
-        """
-        Property that provides a SQLAlchemy session for database operations.
 
-        Usage::
-
-            result = manager.session.query(User).all()
-        """
-        with self.get_session() as session:
-            return session
-        
     def execute(
-                 self, 
-                 statement: Select | Delete | Update | Insert | TextClause, 
-                 commit: bool = False,
-                 scalars: bool = True
-                ) -> Sequence[Row[Any]] | None :
+        self,
+        statement: Select[Any] | Delete | Update | Insert | TextClause,
+        *,
+        commit: bool = False,
+        scalars: bool = True,
+        ignore_closed_res: bool = True,
+    ) -> Sequence[Row[Any]] | None:
         with self.get_session() as session:
             result = session.execute(statement=statement)
             try:
-                result = result.scalars().all() if scalars else result.all()
+                scal_or_rows = result.scalars().all() if scalars else result.all()
             except ResourceClosedError:
-                result = None
+                if not ignore_closed_res:
+                    raise
+                scal_or_rows = None
 
-            session.commit() if commit else None
-            
-            return result
-    
-    def __call__(self, 
-                     statement: Select | Delete | Update | Insert | TextClause, 
-                     *, 
-                     commit: bool = False,
-                     scalars: bool = True
-                    ) -> Sequence[Row[Any]] | None:
-        return self.execute(
-            statement=statement,
-            commit=commit,
-            scalars=scalars
-        )     
+            if commit:
+                session.commit()
+
+            return scal_or_rows
+
+    __call__ = execute
 
 
 class AsyncManager(Manager):
@@ -193,121 +232,72 @@ class AsyncManager(Manager):
 
     Simple `INSERT` example::
 
-        from sqlalchemy import insert
-        from asyncio import run
-        from alchemynger import AsyncManager
-        
         manager = AsyncManager('sqlite+aiosqlite:///path/to/db')
 
+        # Define your SQLAlchemy model class
         class User(manager.Base):
             __tablename__ = 'user'
             name = Column(String(30), primary_key=True)
 
+        # Define an async main function
         async def main():
-            await manager.connect()
-            stmt = insert(User).values(name='username')
-            await manager.execute(stmt, commit=True)
-        
-        if __name__ == "__main__":
-            run(amain())
+            await manager.create_all()
 
-        
-    :param path: :class:`str`
-     DSN path to DataBase
+            stmt = manager[User].insert.values(name='username')
 
-    :contextmanager get_session:
-     `yield` session with auto `.close()` after `with` statement
-    
-    :method execute
-     execute statement and commit if `commit=True`
+            await manager.execute(stmt, commit=True) # or await manager(stmt, commit=True)
     """
 
-    def __init__(
-                 self, 
-                 path: str
-                ) -> None:
-        self._path: str = path
-        self.session_maker = None
+    engine: AsyncEngine
+    _session_maker_type: type[async_sessionmaker[Any]] = async_sessionmaker
+    _engine_fabric = create_async_engine
+    _session_type: type[AsyncSession] = AsyncSession
+    session_maker: async_sessionmaker[Any] | None
 
-        self.Base: DeclarativeMeta = declarative_base()
-
-    async def connect(
-                     self,
-                     *,
-                     create_all: bool = True,
-                     expire_on_commit: bool = ...,
-                     autoflush: bool = ...
-                    ) -> None:
-        await self._engine_init(create_all=create_all, expire_on_commit=expire_on_commit, autoflush=autoflush)
-        
-    async def _engine_init(
-                         self,
-                         create_all: bool,
-                         expire_on_commit: bool,
-                         autoflush: bool
-                        ) -> None:
-        try:
-            self.engine: Engine = create_async_engine(self._path)
-        except ArgumentError:
-            raise ArgumentError(f'Could not parse SQLAlchemy URL from string {self._path}')
-        if create_all:
-            async with self.engine.begin() as connect:
-                await connect.run_sync(self.Base.metadata.create_all)
-        self.session_maker: async_sessionmaker = async_sessionmaker(bind=self.engine, expire_on_commit=expire_on_commit, autoflush=autoflush)
+    async def create_all(
+        self,
+        tables: Sequence[Table] | None = None,
+        *,
+        checkfirst: bool = True,
+    ) -> None:
+        async with self.engine.begin() as connect:
+            await connect.run_sync(
+                self.Base.metadata.create_all,
+                tables=tables,
+                checkfirst=checkfirst,
+            )
 
     @asynccontextmanager
-    async def get_session(
-                         self
-                        ) -> AsyncGenerator[AsyncSession, None]:
+    async def get_session(self, **kwargs: Any) -> AsyncGenerator[AsyncSession, None]:
         if self.session_maker is None:
-            raise Exception(f'The manager is not connected to the database {self._path}')
-        async with self.session_maker() as session:
+            raise RuntimeError(
+                f"The manager is is missing engine or/and session maker {self._path}",
+            )
+        async with self.session_maker(**kwargs) as session:
             try:
                 yield session
             finally:
                 await session.close()
 
-    @property
-    async def session(self) -> AsyncSession:
-        """
-        Property that provides a SQLAlchemy session for database operations.
-
-        Usage::
-
-            session = await manager.session
-            session.add(User(name='name'))
-            await session.commit()
-        """
-        async with self.get_session() as session:
-            return session
-
     async def execute(
-                     self, 
-                     statement: Select | Delete | Update | Insert | TextClause, 
-                     *, 
-                     commit: bool = False,
-                     scalars: bool = True
-                    ) -> Sequence[Row[Any]] | None:
+        self,
+        statement: Select[Any] | Delete | Update | Insert | TextClause,
+        *,
+        commit: bool = False,
+        scalars: bool = True,
+        ignore_closed_res: bool = True,
+    ) -> Sequence[Row[Any]] | None:
         async with self.get_session() as session:
             result = await session.execute(statement=statement)
             try:
-                result = result.scalars().all() if scalars else result.all()
+                scal_or_rows = result.scalars().all() if scalars else result.all()
             except ResourceClosedError:
-                result = None
+                if not ignore_closed_res:
+                    raise
+                scal_or_rows = None
+            if commit:
+                await session.commit()
 
-            await session.commit() if commit else None
+            return scal_or_rows
 
-            return result
-    
-    async def __call__(self, 
-                     statement: Select | Delete | Update | Insert | TextClause, 
-                     *, 
-                     commit: bool = False,
-                     scalars: bool = True
-                    ) -> Sequence[Row[Any]] | None:
-        return await self.execute(
-            statement=statement,
-            commit=commit,
-            scalars=scalars
-        )
-        
+    __call__ = execute

@@ -46,7 +46,7 @@ class User(manager.Base):
 # Define an async main function
 async def main():
     await manager.connect()
-    
+
     stmt = manager[User].insert.values(name='username')
 
     await manager.execute(stmt, commit=True) # or await manager(stmt, commit=True)
@@ -74,5 +74,7 @@ manager[User].update
 ```
 """
 
-
 from .manager import SyncManager, AsyncManager
+
+__all__ = ("SyncManager", "AsyncManager")
+__version__ = "0.2.0"

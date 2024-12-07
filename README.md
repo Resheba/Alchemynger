@@ -1,21 +1,21 @@
-<h1 align="center"> Alchemynger </h1> 
+<h1 align="center"> Alchemynger </h1>
 <h3 align="center"> SQLAlchemy Connection Manager </h3>
 
 <p align="center">
-    <img alt="Python" src="https://img.shields.io/badge/python-3.8_|_3.9_|_3.10_|_3.11-blue" />
+    <img alt="Python" src="https://img.shields.io/badge/python-3.9_|_3.10_|_3.11-blue" />
 </p>
 <p align="center">
     <img alt="Python" src="https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54" />
     <img alt="Зostgres" src="https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white" />
     <img alt="SQLite" src="https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white" />
     <img alt="Flask" src="https://img.shields.io/badge/flask-%23000.svg?style=for-the-badge&logo=flask&logoColor=white" />
-    <img alt="MySQL" src="https://img.shields.io/badge/mysql-%2300f.svg?style=for-the-badge&logo=mysql&logoColor=white" /> 
+    <img alt="MySQL" src="https://img.shields.io/badge/mysql-%2300f.svg?style=for-the-badge&logo=mysql&logoColor=white" />
     <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" />
     <img alt="Flask" src="https://img.shields.io/badge/flask-%23000.svg?style=for-the-badge&logo=flask&logoColor=white" />
 </p>
 
 
-Alchemynger is a versatile Python library that simplifies database connectivity and interaction using SQLAlchemy. It offers both synchronous and asynchronous database management for applications that require efficient database operations. 
+Alchemynger is a versatile Python library that simplifies database connectivity and interaction using SQLAlchemy. It offers both synchronous and asynchronous database management for applications that require efficient database operations.
 
 
 ## Installation
@@ -44,8 +44,8 @@ class User(manager.Base):
     __tablename__ = 'user'
     name = Column(String(30), primary_key=True)
 
-# Connect to the database
-manager.connect()
+# Create User table
+manager.create_all()
 
 # Create an insert statement and execute it
 stmt = manager[User].insert.values(name='username')
@@ -72,8 +72,8 @@ class User(manager.Base):
 
 # Define an async main function
 async def main():
-    await manager.connect()
-    
+    await manager.create_all()
+
     stmt = manager[User].insert.values(name='username')
 
     await manager.execute(stmt, commit=True) # or await manager(stmt, commit=True)
@@ -110,7 +110,7 @@ You can also utilize the standard query-writing methods provided by SQLAlchemy, 
 
 ```python
 from alchemynger import SyncManager
-from alchemynger.sqlalchemy import select, insert, Column
+from alchemynger.sqlalchemy import select, insert, Column, String, Integer
 
 # Create a SyncManager instance
 manager = SyncManager('sqlite:///path/to/db')
@@ -118,10 +118,11 @@ manager = SyncManager('sqlite:///path/to/db')
 # Define your SQLAlchemy model class
 class User(manager.Base):
     __tablename__ = 'user'
-    name = Column(String(30), primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(30))
 
-# Connect to the database
-manager.connect()
+# Create User table
+manager.create_all()
 
 # Create a select statement and execute it
 
