@@ -57,6 +57,7 @@ class Manager(ABC):
         autoflush: bool = ...,
         expire_on_commit: bool = ...,
         session_type: type = ...,
+        engine_kwargs: dict[str, Any] = ...,
         **session_maker_kwargs: Any,
     ) -> None: ...
 
@@ -69,6 +70,7 @@ class Manager(ABC):
         autoflush: bool = ...,
         expire_on_commit: bool = ...,
         session_type: type = ...,
+        engine_kwargs: dict[str, Any] = ...,
         **session_maker_kwargs: Any,
     ) -> None: ...
 
@@ -81,6 +83,7 @@ class Manager(ABC):
         autoflush: bool = True,
         expire_on_commit: bool = True,
         session_type: type | None = None,
+        engine_kwargs: dict[str, Any] | None = None,
         **session_maker_kwargs: Any,
     ) -> None:
         self._path: URL | str = path
@@ -92,6 +95,7 @@ class Manager(ABC):
             session_type=session_type,
             autoflush=autoflush,
             expire_on_commit=expire_on_commit,
+            engine_kwargs=engine_kwargs or {},
             **session_maker_kwargs,
         )
 
@@ -101,19 +105,20 @@ class Manager(ABC):
         session_type: type | None,
         autoflush: bool,
         expire_on_commit: bool,
-        **kwargs: Any,
+        engine_kwargs: dict[str, Any],
+        **session_maker_kwargs: Any,
     ) -> None:
         try:
-            self.engine = self.__class__._engine_fabric(self._path)  # noqa: SLF001
+            self.engine = self.__class__._engine_fabric(self._path, **engine_kwargs)  # noqa: SLF001
         except ArgumentError as ex:
             raise BadPathError(f"Could not parse SQLAlchemy URL from string {self._path}") from ex
         if session_type is not None:
-            kwargs.setdefault("class_", session_type)
+            session_maker_kwargs.setdefault("class_", session_type)
         self.session_maker = self.__class__._session_maker_type(  # noqa: SLF001
             bind=self.engine,
             autoflush=autoflush,
             expire_on_commit=expire_on_commit,
-            **kwargs,
+            **session_maker_kwargs,
         )
 
     def __getitem__(
